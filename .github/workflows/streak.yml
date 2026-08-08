@@ -1,0 +1,59 @@
+name: Streak Keeper
+
+on:
+  schedule:
+    # Main run: 12:00 UTC every day
+    - cron: "0 12 * * *"
+    # Backup run: 18:00 UTC every day.
+    # The guardrail check makes this a no-op if a contribution already
+    # exists for the day, so it only fires when the main run failed.
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      username:
+        description: "GitHub username to check (defaults to repo owner)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: streak-keeper
+  cancel-in-progress: false
+
+env:
+  TARGET_USER: ${{ inputs.username || github.repository_owner }}
+
+jobs:
+  keep-streak:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if the user already contributed today
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          COUNT=$(gh api "search/commits?q=author-date:${TODAY}+author:${TARGET_USER}&per_page=1" \
+            --jq '.total_count' 2>/dev/null || echo 0)
+          echo "Contributions today for ${TARGET_USER}: ${COUNT}"
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Create a guardrail commit (no contributions today)
+        if: steps.check.outputs.count == '0'
+        run: |
+          echo "No contributions found today — creating a guardrail commit."
+          echo "$(date -u +'%Y-%m-%d %H:%M:%S UTC') — guardrail commit" >> streak.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streak.log
+          git commit -m "chore: guardrail commit for $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Skip guardrail commit (already contributed today)
+        if: steps.check.outputs.count != '0'
+        run: echo "The user already contributed today. No guardrail commit needed."
