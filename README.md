@@ -2,102 +2,42 @@
 
 > A guardrail repo for the streak.
 
-Runn is a tiny GitHub Actions project that keeps your GitHub contribution
-**green streak** alive. It runs on a schedule and, only if you haven't
-already contributed that day, makes a small "guardrail" commit so your
-streak never breaks — even on days when you don't have time to code.
+Runn is a small GitHub Actions project that protects the GitHub contribution streak for **suryaraj09**. If no commit by that account is found during the current India Standard Time (IST) day, it creates one correctly attributed guardrail commit.
 
 ## How it works
 
-```
-scheduled trigger (12:00 UTC + 18:00 UTC backup)
-        │
-        ▼
-┌─────────────────────────────┐
-│ Check GitHub search API for  │
-│ commits authored by you today│
-└─────────────────────────────┘
-        │
-        ▼
-   contributed today?
-      │            │
-     yes          no
-      │            │
-      ▼            ▼
-  do nothing   append timestamp
-  (streak safe) to streak.log and
-               commit + push
-```
+1. The workflow runs daily at **12:00 UTC (17:30 IST)**.
+2. A backup runs at **17:00 UTC (22:30 IST)**, leaving time for normal GitHub Actions scheduling delays.
+3. It searches GitHub for commits authored by `suryaraj09` during the current IST calendar day.
+4. If no commit exists and no guardrail was already recorded, it appends a timestamp to `streak.log` and pushes a commit.
+5. Guardrail commits use the account's GitHub noreply address, so GitHub can attribute them to `suryaraj09`.
 
-1. A scheduled workflow runs every day at **12:00 UTC** (with an **18:00 UTC**
-   backup in case the main run fails).
-2. It queries the GitHub commit search API to count commits you authored
-   today.
-3. If the count is **0**, it appends a timestamp line to `streak.log` and
-   pushes a commit — that counts as a contribution for the day.
-4. If you **already contributed**, it skips — no fake activity is created.
+The log check independently prevents the backup run from creating a duplicate while GitHub's commit-search index catches up.
 
 ## Files
 
 | File | Purpose |
-|------|---------|
-| `.github/workflows/streak.yml` | The Streak Keeper workflow |
-| `streak.log` | Append-only log of guardrail commits (created on first run) |
+|---|---|
+| `.github/workflows/streak.yml` | Scheduled streak-keeper workflow |
+| `streak.log` | Append-only record of guardrail commits |
 
-## Setup
+## Requirements
 
-There is **no configuration required** — push this repo to GitHub and the
-workflow is live. Just make sure:
+In **Settings → Actions → General**:
 
-- GitHub **Actions are enabled** for the repo
-  (Settings → Actions → General → Allow all actions and reusable workflows).
-- The `GITHUB_TOKEN` (auto-provided) has **write access**
-  (Settings → Actions → General → Workflow permissions → Read and write).
+- Actions must be enabled.
+- Workflow permissions must be set to **Read and write permissions**.
 
-## Changing the schedule
+For commits to appear on the contribution graph, the repository's default branch must remain `main`, and the commit email must stay linked to the GitHub account.
 
-Edit the `cron` lines in `.github/workflows/streak.yml`:
+## Manual run
 
-```yaml
-on:
-  schedule:
-    - cron: "0 12 * * *"   # main run
-    - cron: "0 18 * * *"   # backup run
-```
+Open **Actions → Streak Keeper → Run workflow** to test or run the guardrail on demand.
 
-Cron uses **UTC**. GitHub's contribution graph is based on your profile's
-timezone, so pick times that are safely before midnight *in your timezone*
-(e.g. if you're UTC+5:30, 12:00 UTC = 17:30 IST, and the 18:00 UTC backup
-= 23:30 IST).
+## Important limitation
 
-> ⚠️ Remember: a commit made by the workflow at, say, 23:30 IST still counts
-> for that IST day since the author date is the actual commit time. Keep at
-> least one run before your local midnight so the guardrail lands on the
-> right day.
-
-## Manual trigger
-
-You can also run it on demand (handy for testing or an emergency save):
-
-1. Go to the repo's **Actions** tab.
-2. Select **Streak Keeper** → **Run workflow**.
-3. Optionally enter a username to check (defaults to the repo owner).
-
-## Notes & caveats
-
-- **Honest by default**: Runn only commits when you have *zero* commits
-  that day, so it never inflates your graph with fake work on active days.
-- **Noise**: on inactive days it does add a commit — that's the whole point,
-  but be aware your history will show daily "chore" commits.
-- **Search API coverage**: the check looks at commits GitHub attributes to
-  your account. If you commit with an unlinked email, those won't count —
-  make sure your git email matches a GitHub-linked email.
-- **Rate limits**: the search API limit with a token is plenty for one call
-  per run.
-- **Other contribution types** (issues, PRs, reviews) also count toward your
-  streak on GitHub — the guardrail commit is just a reliable fallback.
+The repository-scoped `GITHUB_TOKEN` can reliably search public commits. It cannot inspect unrelated private repositories. A day containing only commits in another private repository may therefore still receive a guardrail commit here. Avoid adding a broad personal access token solely for this purpose unless that access is genuinely required.
 
 ## Disabling
 
-To stop the guardrail, either delete `.github/workflows/streak.yml` or
-disable the workflow in the Actions tab (Actions → Streak Keeper → ⋯ → Disable).
+Disable **Streak Keeper** from the Actions tab or remove `.github/workflows/streak.yml`.
