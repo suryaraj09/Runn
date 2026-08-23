@@ -2,18 +2,11 @@ name: Streak Keeper
 
 on:
   schedule:
-    # Main run: 12:00 UTC every day
+    # Main run: 17:30 IST
     - cron: "0 12 * * *"
-    # Backup run: 18:00 UTC every day.
-    # The guardrail check makes this a no-op if a contribution already
-    # exists for the day, so it only fires when the main run failed.
-    - cron: "0 18 * * *"
+    # Backup run: 22:30 IST, leaving room for GitHub scheduling delays
+    - cron: "0 17 * * *"
   workflow_dispatch:
-    inputs:
-      username:
-        description: "GitHub username to check (defaults to repo owner)"
-        required: false
-        default: ""
 
 permissions:
   contents: write
@@ -23,7 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_USER: ${{ inputs.username || github.repository_owner }}
+  TARGET_USER: ${{ github.repository_owner }}
+  TIME_ZONE: Asia/Kolkata
 
 jobs:
   keep-streak:
@@ -32,28 +26,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check if the user already contributed today
+      - name: Check today's commits and guardrail
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          TODAY=$(date -u +%Y-%m-%d)
-          COUNT=$(gh api "search/commits?q=author-date:${TODAY}+author:${TARGET_USER}&per_page=1" \
-            --jq '.total_count' 2>/dev/null || echo 0)
-          echo "Contributions today for ${TARGET_USER}: ${COUNT}"
-          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
-      - name: Create a guardrail commit (no contributions today)
-        if: steps.check.outputs.count == '0'
+          TODAY_LOCAL=$(TZ="$TIME_ZONE" date +%Y-%m-%d)
+          START_UTC=$(date -u -d "${TODAY_LOCAL} 00:00:00 +0530" +%Y-%m-%dT%H:%M:%SZ)
+          END_UTC=$(date -u -d "${TODAY_LOCAL} 23:59:59 +0530" +%Y-%m-%dT%H:%M:%SZ)
+
+          RESPONSE=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "search/commits?q=author:${TARGET_USER}+author-date:${START_UTC}..${END_UTC}&per_page=1")
+          COUNT=$(jq -er '.total_count' <<< "$RESPONSE")
+
+          GUARDRAIL_EXISTS=false
+          if [[ -f streak.log ]] && grep -q "^${TODAY_LOCAL} .*guardrail commit$" streak.log; then
+            GUARDRAIL_EXISTS=true
+          fi
+
+          echo "Commits today for ${TARGET_USER}: ${COUNT}"
+          echo "Guardrail already recorded today: ${GUARDRAIL_EXISTS}"
+          echo "today=${TODAY_LOCAL}" >> "$GITHUB_OUTPUT"
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "guardrail_exists=${GUARDRAIL_EXISTS}" >> "$GITHUB_OUTPUT"
+
+      - name: Create a guardrail commit
+        if: steps.check.outputs.count == '0' && steps.check.outputs.guardrail_exists != 'true'
+        shell: bash
         run: |
-          echo "No contributions found today — creating a guardrail commit."
-          echo "$(date -u +'%Y-%m-%d %H:%M:%S UTC') — guardrail commit" >> streak.log
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
+          echo "${{ steps.check.outputs.today }} $(TZ="$TIME_ZONE" date +'%H:%M:%S %Z') — guardrail commit" >> streak.log
+          git config user.name "Suryaraj Jadeja"
+          git config user.email "70677023+suryaraj09@users.noreply.github.com"
           git add streak.log
-          git commit -m "chore: guardrail commit for $(date -u +%Y-%m-%d)"
+          git commit -m "chore: guardrail commit for ${{ steps.check.outputs.today }}"
           git push
 
-      - name: Skip guardrail commit (already contributed today)
-        if: steps.check.outputs.count != '0'
-        run: echo "The user already contributed today. No guardrail commit needed."
+      - name: Skip guardrail commit
+        if: steps.check.outputs.count != '0' || steps.check.outputs.guardrail_exists == 'true'
+        run: echo "A commit or guardrail already exists for today. Nothing to do."
