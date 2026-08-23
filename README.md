@@ -34,6 +34,21 @@ For commits to appear on the contribution graph, the repository's default branch
 
 Open **Actions → Streak Keeper → Run workflow** to test or run the guardrail on demand.
 
+## Email notifications
+
+Runn can be configured to send an email only after it finds no commits and successfully creates a guardrail commit. It does not send mail when normal activity is detected or when the backup run skips a duplicate.
+
+Gmail delivery uses these GitHub Actions repository secrets:
+
+| Secret | Purpose |
+|---|---|
+| `MAIL_USERNAME` | Gmail account used to send the notification |
+| `MAIL_PASSWORD` | 16-character Google App Password |
+| `MAIL_TO` | Notification recipient |
+
+For this repository, `MAIL_USERNAME` and `MAIL_TO` are configured for `suryarajjadeja09@gmail.com`. `MAIL_PASSWORD` must be added privately under **Settings → Secrets and variables → Actions** before the notification step is enabled.
+
+Create the password at [Google App Passwords](https://myaccount.google.com/apppasswords). Two-step verification must be enabled on the Google account. Never use a regular Gmail password, place credentials in this README, or commit them to the repository.
 ## Important limitation
 
 The repository-scoped `GITHUB_TOKEN` can reliably search public commits. It cannot inspect unrelated private repositories. A day containing only commits in another private repository may therefore still receive a guardrail commit here. Avoid adding a broad personal access token solely for this purpose unless that access is genuinely required.
