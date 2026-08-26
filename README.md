@@ -2,7 +2,7 @@
 
 > A guardrail repo for the streak.
 
-Runn is a small GitHub Actions project that protects the GitHub contribution streak for **suryaraj09**. If no commit by that account is found during the current India Standard Time (IST) day, it creates one correctly attributed guardrail commit.
+Runn is a small GitHub Actions project that protects the GitHub contribution streak for **suryaraj09**. If no commit by that account is found during the current India Standard Time (IST) day, it creates one correctly attributed guardrail commit. **My initial goal was that I learned a bit of how github workflows work and how to configure it to the Github Actions**.
 
 ## How it works
 
