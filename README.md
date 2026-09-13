@@ -2,7 +2,7 @@
 
 > A guardrail repo for the streak.
 
-Runn is a small GitHub Actions project that protects the GitHub contribution streak for **suryaraj09**. If no commit by that account is found during the current India Standard Time (IST) day, it creates one correctly attributed guardrail commit. **My initial goal was that I learned a bit of how github workflows work and how to configure it to the Github Actions**.
+Runn is a small GitHub Actions project that protects the GitHub contribution streak for **suryaraj09**. If no commit by that account is found during the current India Standard Time (IST) day, it creates an automated guardrail commit to maintain continuity.
 
 ## How it works
 
@@ -14,12 +14,21 @@ Runn is a small GitHub Actions project that protects the GitHub contribution str
 
 The log check independently prevents the backup run from creating a duplicate while GitHub's commit-search index catches up.
 
+## Features
+
+✨ **Automated Streak Protection** - Ensures your contribution graph never breaks
+🔄 **Dual Scheduling** - Primary and backup runs for reliability
+📧 **Email Notifications** - Optional Gmail alerts when guardrails are deployed
+🔐 **Secure** - Uses GitHub Actions secrets for sensitive data
+📝 **Transparent Logging** - Append-only log of all guardrail commits
+
 ## Files
 
 | File | Purpose |
 |---|---|
 | `.github/workflows/streak.yml` | Scheduled streak-keeper workflow |
 | `streak.log` | Append-only record of guardrail commits |
+| `CONTRIBUTING.md` | Contribution guidelines |
 
 ## Requirements
 
@@ -36,7 +45,7 @@ Open **Actions → Streak Keeper → Run workflow** to test or run the guardrail
 
 ## Email notifications
 
-Runn can be configured to send an email only after it finds no commits and successfully creates a guardrail commit. It does not send mail when normal activity is detected or when the backup run skips a duplicate.
+Runn can be configured to send an email only after it finds no commits and successfully creates a guardrail commit. It does not send mail when normal activity is detected or when the backup run skips.
 
 Gmail delivery uses these GitHub Actions repository secrets:
 
@@ -46,14 +55,22 @@ Gmail delivery uses these GitHub Actions repository secrets:
 | `MAIL_PASSWORD` | 16-character Google App Password |
 | `MAIL_TO` | Notification recipient |
 
-For this repository, `MAIL_USERNAME` and `MAIL_TO` are configured for `suryarajjadeja09@gmail.com`. `MAIL_PASSWORD` must be added privately under **Settings → Secrets and variables → Actions** before the notification step is enabled.
+For this repository, `MAIL_USERNAME` and `MAIL_TO` are configured for `suryarajjadeja09@gmail.com`. `MAIL_PASSWORD` must be added privately under **Settings → Secrets and variables → Actions**.
 
-Create the password at [Google App Passwords](https://myaccount.google.com/apppasswords). Two-step verification must be enabled on the Google account. Never use a regular Gmail password, place credentials in this README, or commit them to the repository.
+Create the password at [Google App Passwords](https://myaccount.google.com/apppasswords). Two-step verification must be enabled on the Google account. Never use a regular Gmail password, place credentials only in repository secrets.
 
 ## Important limitation
 
-The repository-scoped `GITHUB_TOKEN` can reliably search public commits. It cannot inspect unrelated private repositories. A day containing only commits in another private repository may therefore still receive a guardrail commit here. Avoid adding a broad personal access token solely for this purpose unless that access is genuinely required.
+The repository-scoped `GITHUB_TOKEN` can reliably search public commits. It cannot inspect unrelated private repositories. A day containing only commits in another private repository may therefore trigger the guardrail.
 
 ## Disabling
 
 Disable **Streak Keeper** from the Actions tab or remove `.github/workflows/streak.yml`.
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Author
+
+Created and maintained by [@suryaraj09](https://github.com/suryaraj09)
